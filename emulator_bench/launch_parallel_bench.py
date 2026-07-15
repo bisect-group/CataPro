@@ -23,7 +23,13 @@ import threading
 from pathlib import Path
 
 import pandas as pd
-from tqdm.auto import tqdm
+try:
+    from src.utils.rich_progress import progress, write
+except ModuleNotFoundError:
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+    from src.utils.rich_progress import progress, write
 
 BENCH_DIR = Path(__file__).resolve().parent
 REPO_ROOT = BENCH_DIR.parent
@@ -497,7 +503,7 @@ def main():
             print(f"[skip] no splits found in {vr}")
             continue
 
-        for split_group, split_name, split_dir in tqdm(jobs, desc=f"{value_type} features", unit="split"):
+        for split_group, split_name, split_dir in progress(jobs, desc=f"{value_type} features", unit="split"):
             train_csv = _find_split_file(split_dir, "train")
             val_csv = _find_split_file(split_dir, "val")
             test_csv = _find_split_file(split_dir, "test")

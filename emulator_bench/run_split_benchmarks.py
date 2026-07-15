@@ -6,7 +6,13 @@ import sys
 from pathlib import Path
 
 import pandas as pd
-from tqdm.auto import tqdm
+try:
+    from src.utils.rich_progress import progress, write
+except ModuleNotFoundError:
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+    from src.utils.rich_progress import progress, write
 
 BENCH_DIR = Path(__file__).resolve().parent
 DEFAULT_HPARAMS_JSON = BENCH_DIR / "default_hparams.json"
@@ -342,7 +348,7 @@ def main():
         return
 
     run_rows = []
-    progress = tqdm(jobs, desc=f"{args.value_type} benchmark", unit="job")
+    progress = progress(jobs, desc=f"{args.value_type} benchmark", unit="job")
 
     for split_group, threshold_name, threshold_dir in progress:
         progress.set_postfix(split=split_group, threshold=threshold_name)

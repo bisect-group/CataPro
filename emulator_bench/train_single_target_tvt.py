@@ -7,7 +7,13 @@ import numpy as np
 import pandas as pd
 import torch as th
 from torch.utils.data import DataLoader, Dataset
-from tqdm.auto import tqdm
+try:
+    from src.utils.rich_progress import progress, write
+except ModuleNotFoundError:
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+    from src.utils.rich_progress import progress, write
 
 from model import SingleTaskRegressor
 from utils import (
@@ -70,7 +76,7 @@ def main(args):
     start_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     record_data = []
-    epoch_bar = tqdm(range(args.epochs), desc="Training", unit="epoch")
+    epoch_bar = progress(range(args.epochs), desc="Training", unit="epoch")
     for epoch in epoch_bar:
         train_eval = run_a_training_epoch(
             model,
