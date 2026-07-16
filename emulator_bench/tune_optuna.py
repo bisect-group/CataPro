@@ -8,7 +8,13 @@ from pathlib import Path
 
 import optuna
 import pandas as pd
-from tqdm.auto import tqdm
+try:
+    from src.utils.rich_progress import progress, write
+except ModuleNotFoundError:
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+    from src.utils.rich_progress import progress, write
 
 
 def discover_threshold_dirs(value_root: Path, split_groups, explicit_thresholds=None):
@@ -218,7 +224,7 @@ def main():
         return
 
     # Build/reuse features once before optimization.
-    feature_progress = tqdm(jobs, desc="Preparing features", unit="job")
+    feature_progress = progress(jobs, desc="Preparing features", unit="job")
     prepared_jobs = []
     for split_group, threshold_name, threshold_dir in feature_progress:
         train_csv, val_csv, test_csv = ensure_csv_triplet(threshold_dir)
