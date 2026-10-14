@@ -348,10 +348,10 @@ def main():
         return
 
     run_rows = []
-    progress = progress(jobs, desc=f"{args.value_type} benchmark", unit="job")
+    pbar = progress(jobs, desc=f"{args.value_type} benchmark", unit="job")
 
-    for split_group, threshold_name, threshold_dir in progress:
-        progress.set_postfix(split=split_group, threshold=threshold_name)
+    for split_group, threshold_name, threshold_dir in pbar:
+        pbar.set_postfix(split=split_group, threshold=threshold_name)
 
         train_csv, val_csv, test_csv = ensure_split_triplet(threshold_dir)
         if not (train_csv and val_csv and test_csv):
