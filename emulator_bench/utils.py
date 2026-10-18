@@ -168,9 +168,6 @@ def run_a_training_epoch(model, data_loader, optimizer, device="cuda:0", amp_dty
             scaler.step(optimizer)
             scaler.update()
 
-        if th.cuda.is_available():
-            th.cuda.empty_cache()
-
         with th.no_grad():
             total_loss += loss.cpu().detach().numpy()
             y_label.append(label.cpu().detach().numpy().ravel())

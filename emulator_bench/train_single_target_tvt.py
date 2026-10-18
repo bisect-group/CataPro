@@ -41,13 +41,31 @@ class TensorDataset(Dataset):
         return len(self.values)
 
 
-def build_loader(pkl_path, batch_size, shuffle, workers=8):
+class ShuffledBatches:
+    """Shuffled batches indexed from the feature tensor in the main process.
+
+    A DataLoader over row indices draws the shuffle order, so the RNG use matches DataLoader(shuffle=True).
+    """
+
+    def __init__(self, values, batch_size):
+        self.values = values
+        self.order = DataLoader(range(len(values)), batch_size=batch_size, shuffle=True, collate_fn=th.as_tensor)
+
+    def __iter__(self):
+        for idx in self.order:
+            yield self.values[idx]
+
+    def __len__(self):
+        return len(self.order)
+
+
+def build_loader(pkl_path, batch_size, shuffle):
     df = pd.read_pickle(pkl_path)
     idx = df.index.tolist()
     values = th.from_numpy(df.values.astype(np.float32))
-    ds = TensorDataset(values)
-    dl = DataLoader(ds, batch_size=batch_size, shuffle=shuffle, num_workers=workers if shuffle else 0)
-    return idx, dl
+    if shuffle:
+        return idx, ShuffledBatches(values, batch_size)
+    return idx, DataLoader(TensorDataset(values), batch_size=batch_size, shuffle=False)
 
 
 def set_seed(seed: int):
