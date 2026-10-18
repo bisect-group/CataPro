@@ -7,7 +7,7 @@ import pandas as pd
 
 from feature_utils import Seq_to_vec, GetMACCSKeys, get_molT5_embed
 
-DEFAULT_CACHE_DIR = str(Path(__file__).resolve().parent / ".cache_embeddings")
+DEFAULT_CACHE_DIR = str(Path(__file__).resolve().parents[3] / "outputs" / "baselines" / "CataPro" / "embeddings")
 
 
 def _require_columns(df, columns):

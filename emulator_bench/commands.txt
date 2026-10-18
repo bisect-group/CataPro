@@ -1,15 +1,18 @@
-# Run from the CataPro repository root. Use the mldb env: /home/adhil/.conda/envs/mldb/bin/python
-# Defaults: --data_root <EMULaToR>/data/processed/datasets, --out_root <EMULaToR>/outputs/baselines/CataPro, seeds 666 777 888.
+# Run from baselines/CataPro (the submodule root).
+PY=/home/adhil/.conda/envs/mldb/bin/python
+# Defaults: --data_root <EMULaToR>/data/processed/datasets, --out_root <EMULaToR>/outputs/baselines/CataPro (--cache_dir <EMULaToR>/outputs/baselines/CataPro/embeddings), seeds 666 777 888.
 
 # List the planned runs without training.
-python emulator_bench/run_split_benchmarks.py --task kcat --dry_run
+$PY emulator_bench/run_split_benchmarks.py --task kcat --dry_run
 
 # One task, all splits, all seeds, one GPU (sequential).
-CUDA_VISIBLE_DEVICES=0 python emulator_bench/run_split_benchmarks.py --task kcat
-CUDA_VISIBLE_DEVICES=0 python emulator_bench/run_split_benchmarks.py --task km
+CUDA_VISIBLE_DEVICES=0 $PY emulator_bench/run_split_benchmarks.py --task kcat
+CUDA_VISIBLE_DEVICES=0 $PY emulator_bench/run_split_benchmarks.py --task km
 
 # All tasks, spread over GPUs (features are built first, then runs train in parallel).
-python emulator_bench/launch_parallel_bench.py --tasks kcat km --gpus 0 1 2 3 --runs_per_gpu 2
+$PY emulator_bench/launch_parallel_bench.py --tasks kcat km --gpus 0 1 2 3 --runs_per_gpu 2
+# Same, with bf16 mixed precision.
+$PY emulator_bench/launch_parallel_bench.py --tasks kcat km --gpus 0 1 2 3 --runs_per_gpu 2 --amp
 
 # Mean and std over seeds -> <out_root>/aggregate_catapro_results.csv
-python emulator_bench/aggregate_catapro_results.py
+$PY emulator_bench/aggregate_catapro_results.py

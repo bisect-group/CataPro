@@ -1,6 +1,6 @@
 """Aggregate CataPro results over seeds.
 
-Reads <out_root>/<task>/<split_group>[/<threshold_dir>]/seed_<seed>/final_results_{val,test}.csv
+Reads <out_root>/<task>/<split_group>/<split_name>/seed_<seed>/final_results_{val,test}.csv
 and writes <out_root>/aggregate_catapro_results.csv with mean and std per metric.
 """
 

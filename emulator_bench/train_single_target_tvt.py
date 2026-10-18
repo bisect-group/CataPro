@@ -18,6 +18,7 @@ from model import SingleTaskRegressor
 from utils import (
     EarlyStopping,
     evaluate,
+    resolve_amp_dtype,
     out_results,
     run_a_training_epoch,
     run_an_eval_epoch,
@@ -69,6 +70,8 @@ def main(args):
 
     model = SingleTaskRegressor(drop_rate=args.drop_rate, device=args.device)
     optimizer = th.optim.Adam(model.parameters(), lr=args.lr, betas=(0.9, 0.999), weight_decay=0.01)
+    amp_dtype = resolve_amp_dtype(args.device) if args.amp else None
+    scaler = th.amp.GradScaler("cuda") if amp_dtype == th.float16 else None
     stopper = EarlyStopping(args.patience, args.min_delta)
 
     best_model_path = out_dir / "bestmodel.pth"
@@ -77,8 +80,8 @@ def main(args):
     record_data = []
     epoch_bar = progress(range(args.epochs), desc="Training", unit="epoch")
     for epoch in epoch_bar:
-        train_eval = run_a_training_epoch(model, train_loader, optimizer, args.device)
-        val_pred, val_label, val_eval = run_an_eval_epoch(model, val_loader, args.device)
+        train_eval = run_a_training_epoch(model, train_loader, optimizer, args.device, amp_dtype, scaler)
+        val_pred, val_label, val_eval = run_an_eval_epoch(model, val_loader, args.device, amp_dtype)
 
         epoch_bar.set_postfix(
             train_r2=f"{train_eval[2]:.4f}",
@@ -107,8 +110,8 @@ def main(args):
     model = SingleTaskRegressor(drop_rate=args.drop_rate, device=args.device)
     model.load_state_dict(th.load(best_model_path, map_location=args.device))
 
-    val_pred, val_label, val_eval = run_an_eval_epoch(model, val_loader, args.device)
-    test_pred, test_label, test_eval = run_an_eval_epoch(model, test_loader, args.device)
+    val_pred, val_label, val_eval = run_an_eval_epoch(model, val_loader, args.device, amp_dtype)
+    test_pred, test_label, test_eval = run_an_eval_epoch(model, test_loader, args.device, amp_dtype)
 
     out_results(val_eval, str(out_dir / "results_val.csv"))
     out_results(test_eval, str(out_dir / "results_test.csv"))
@@ -161,6 +164,7 @@ if __name__ == "__main__":
     parser.add_argument("--drop_rate", type=float, default=0.0)
     parser.add_argument("--epochs", type=int, default=150)
     parser.add_argument("--device", type=str, default="cuda:0")
+    parser.add_argument("--amp", action="store_true", help="Mixed precision: bf16 on Ampere or newer, fp16 on older GPUs. Default is the original fp32.")
     parser.add_argument("--patience", type=int, default=20)
     parser.add_argument("--min_delta", type=float, default=0.001)
     parser.add_argument("--seed", type=int, default=42, help="Random seed for initialization and shuffling.")

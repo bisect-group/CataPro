@@ -125,7 +125,19 @@ class RMSELoss(nn.Module):
 rmse_loss = RMSELoss()
 
 
-def run_a_training_epoch(model, data_loader, optimizer, device="cuda:0"):
+def resolve_amp_dtype(device):
+    """bf16 on Ampere or newer, fp16 on older GPUs, None (fp32) on CPU."""
+    device = th.device(device)
+    if device.type != "cuda":
+        return None
+    return th.bfloat16 if th.cuda.get_device_capability(device)[0] >= 8 else th.float16
+
+
+def autocast(device, amp_dtype):
+    return th.autocast(device_type=th.device(device).type, dtype=amp_dtype, enabled=amp_dtype is not None)
+
+
+def run_a_training_epoch(model, data_loader, optimizer, device="cuda:0", amp_dtype=None, scaler=None):
     model.train()
 
     total_loss = 0
@@ -142,12 +154,19 @@ def run_a_training_epoch(model, data_loader, optimizer, device="cuda:0"):
         if len(label) == 1:
             continue
 
-        pred = model(ezy_feats, sbt_feats)
+        with autocast(device, amp_dtype):
+            pred = model(ezy_feats, sbt_feats)
+        pred = pred.float()
         loss = rmse_loss(label, pred.ravel())
 
         optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
+        if scaler is None:
+            loss.backward()
+            optimizer.step()
+        else:
+            scaler.scale(loss).backward()
+            scaler.step(optimizer)
+            scaler.update()
 
         if th.cuda.is_available():
             th.cuda.empty_cache()
@@ -164,7 +183,7 @@ def run_a_training_epoch(model, data_loader, optimizer, device="cuda:0"):
     return np.array([_pcc, _scc, _r2, _rmse, _mse, _mae, total_loss / len(data_loader)])
 
 
-def run_an_eval_epoch(model, data_loader, device="cuda:0"):
+def run_an_eval_epoch(model, data_loader, device="cuda:0", amp_dtype=None):
     model.eval()
 
     with th.no_grad():
@@ -178,7 +197,9 @@ def run_an_eval_epoch(model, data_loader, device="cuda:0"):
             sbt_feats = data[:, 1024:-1]
             label = data[:, -1]
 
-            pred = model(ezy_feats, sbt_feats)
+            with autocast(device, amp_dtype):
+                pred = model(ezy_feats, sbt_feats)
+            pred = pred.float()
             loss = rmse_loss(label, pred.ravel())
 
             total_loss += loss.cpu().detach().numpy()

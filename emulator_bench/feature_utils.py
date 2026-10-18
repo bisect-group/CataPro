@@ -18,7 +18,9 @@ from rdkit.Chem import MACCSkeys
 
 PROT_MODEL_ID = "Rostlab/prot_t5_xl_uniref50"
 MOL_MODEL_ID = "laituan245/molt5-base-smiles2caption"
-CACHE_VERSION = "v1"
+CACHE_VERSION = "v2"
+DTYPE = "float32"
+PROT_MAX_LEN = 1000
 
 
 def _ensure_cache_root(cache_dir):
@@ -30,12 +32,12 @@ def _ensure_cache_root(cache_dir):
 
 
 def _cache_key(namespace, value):
-    text = f"{CACHE_VERSION}|{namespace}|{value}"
+    text = f"{CACHE_VERSION}|{namespace}|{DTYPE}|{value}"
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
 def _cache_file(cache_root, namespace, key):
-    subdir = cache_root / namespace
+    subdir = cache_root / f"{namespace}_{CACHE_VERSION}"
     subdir.mkdir(parents=True, exist_ok=True)
     return subdir / f"{key}.npy"
 
@@ -66,7 +68,7 @@ def Seq_to_vec(Sequence, batch_size=8, cache_dir=None, cache_read=True, cache_wr
     processed = []
     for seq in Sequence:
         seq = str(seq)
-        if len(seq) > 1000:
+        if len(seq) > PROT_MAX_LEN:
             seq = seq[:500] + seq[-500:]
         seq = re.sub(r"[UZOB]", "X", seq)
         processed.append(" ".join(list(seq)))
@@ -85,7 +87,7 @@ def Seq_to_vec(Sequence, batch_size=8, cache_dir=None, cache_read=True, cache_wr
     misses = []
     for seq in unique_sequences:
         if cache_root is not None and cache_read:
-            key = _cache_key(PROT_MODEL_ID, seq)
+            key = _cache_key(f"{PROT_MODEL_ID}|max_len={PROT_MAX_LEN}", seq)
             cached = _load_cache_vec(cache_root, "prot_t5", key)
             if cached is not None:
                 seq_to_embedding[seq] = cached.astype(np.float32)
@@ -116,7 +118,7 @@ def Seq_to_vec(Sequence, batch_size=8, cache_dir=None, cache_read=True, cache_wr
                 seq = batch_sequences[seq_num]
                 seq_to_embedding[seq] = vec
                 if cache_root is not None and cache_write:
-                    key = _cache_key(PROT_MODEL_ID, seq)
+                    key = _cache_key(f"{PROT_MODEL_ID}|max_len={PROT_MAX_LEN}", seq)
                     _save_cache_vec(cache_root, "prot_t5", key, vec)
 
     features_normalize = np.zeros((len(processed), len(next(iter(seq_to_embedding.values())))), dtype=np.float32)
