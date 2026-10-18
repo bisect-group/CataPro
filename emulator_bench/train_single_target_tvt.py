@@ -8,12 +8,11 @@ import pandas as pd
 import torch as th
 from torch.utils.data import DataLoader, Dataset
 try:
-    from src.utils.rich_progress import progress, write
+    from src.utils.rich_progress import progress
 except ModuleNotFoundError:
     import sys
-    from pathlib import Path
     sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
-    from src.utils.rich_progress import progress, write
+    from src.utils.rich_progress import progress
 
 from model import SingleTaskRegressor
 from utils import (
@@ -70,7 +69,7 @@ def main(args):
 
     model = SingleTaskRegressor(drop_rate=args.drop_rate, device=args.device)
     optimizer = th.optim.Adam(model.parameters(), lr=args.lr, betas=(0.9, 0.999), weight_decay=0.01)
-    stopper = EarlyStopping(args.epochs + 1 if args.no_early_stopping else args.patience, args.min_delta)
+    stopper = EarlyStopping(args.patience, args.min_delta)
 
     best_model_path = out_dir / "bestmodel.pth"
     start_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -78,13 +77,7 @@ def main(args):
     record_data = []
     epoch_bar = progress(range(args.epochs), desc="Training", unit="epoch")
     for epoch in epoch_bar:
-        train_eval = run_a_training_epoch(
-            model,
-            train_loader,
-            optimizer,
-            args.device,
-            skip_singleton_batch=args.skip_singleton_batch,
-        )
+        train_eval = run_a_training_epoch(model, train_loader, optimizer, args.device)
         val_pred, val_label, val_eval = run_an_eval_epoch(model, val_loader, args.device)
 
         epoch_bar.set_postfix(
@@ -108,8 +101,8 @@ def main(args):
 
     end_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     with open(out_dir / "time_running.dat", "w") as f:
-        f.write(f"Start Time:  {start_time}\\n")
-        f.write(f"End Time:  {end_time}\\n")
+        f.write(f"Start Time:  {start_time}\n")
+        f.write(f"End Time:  {end_time}\n")
 
     model = SingleTaskRegressor(drop_rate=args.drop_rate, device=args.device)
     model.load_state_dict(th.load(best_model_path, map_location=args.device))
@@ -157,13 +150,13 @@ def main(args):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Task-agnostic single-target TVT trainer for kcat/Km/Ki.")
+    parser = argparse.ArgumentParser(description="Single-target TVT trainer with the original CataPro settings (defaults below).")
     parser.add_argument("--train_pkl", required=True, type=str)
     parser.add_argument("--val_pkl", required=True, type=str)
     parser.add_argument("--test_pkl", required=True, type=str)
     parser.add_argument("--out_dir", required=True, type=str)
     parser.add_argument("--task_name", default="single_target", type=str, help="Label for metadata only.")
-    parser.add_argument("--batch_size", type=int, default=2048)
+    parser.add_argument("--batch_size", type=int, default=64)
     parser.add_argument("--lr", type=float, default=0.001)
     parser.add_argument("--drop_rate", type=float, default=0.0)
     parser.add_argument("--epochs", type=int, default=150)
@@ -171,15 +164,5 @@ if __name__ == "__main__":
     parser.add_argument("--patience", type=int, default=20)
     parser.add_argument("--min_delta", type=float, default=0.001)
     parser.add_argument("--seed", type=int, default=42, help="Random seed for initialization and shuffling.")
-    parser.add_argument(
-        "--skip_singleton_batch",
-        action="store_true",
-        help="Matches OG Km behavior when a train batch has only one row.",
-    )
-    parser.add_argument(
-        "--no_early_stopping",
-        action="store_true",
-        help="Disable early stopping and train for the full --epochs.",
-    )
 
     main(parser.parse_args())

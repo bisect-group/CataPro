@@ -1,115 +1,15 @@
-# ── Build features (one-off / manual) ────────────────────────────────────────
+# Run from the CataPro repository root. Use the mldb env: /home/adhil/.conda/envs/mldb/bin/python
+# Defaults: --data_root <EMULaToR>/data/processed/datasets, --out_root <EMULaToR>/outputs/baselines/CataPro, seeds 666 777 888.
 
-CUDA_VISIBLE_DEVICES=0 python emulator_bench/build_tvt_features.py \
-  --input_csv /home/adhil/github/EMULaToR/data/processed/baselines/CataPro/ki/val.csv \
-  --output_pkl /home/adhil/github/EMULaToR/data/processed/baselines/CataPro/ki/val_feats.pkl \
-  --target_col log10_value
+# List the planned runs without training.
+python emulator_bench/run_split_benchmarks.py --task kcat --dry_run
 
-CUDA_VISIBLE_DEVICES=0 python emulator_bench/build_tvt_features.py \
-  --input_csv /home/adhil/github/EMULaToR/data/processed/baselines/CataPro/ki/test.csv \
-  --output_pkl /home/adhil/github/EMULaToR/data/processed/baselines/CataPro/ki/test_feats.pkl \
-  --target_col log10_value
+# One task, all splits, all seeds, one GPU (sequential).
+CUDA_VISIBLE_DEVICES=0 python emulator_bench/run_split_benchmarks.py --task kcat
+CUDA_VISIBLE_DEVICES=0 python emulator_bench/run_split_benchmarks.py --task km
 
-CUDA_VISIBLE_DEVICES=0 python emulator_bench/build_tvt_features.py \
-  --input_csv /home/adhil/github/EMULaToR/data/processed/baselines/CataPro/ki/train.csv \
-  --output_pkl /home/adhil/github/EMULaToR/data/processed/baselines/CataPro/ki/train_feats.pkl \
-  --target_col log10_value
+# All tasks, spread over GPUs (features are built first, then runs train in parallel).
+python emulator_bench/launch_parallel_bench.py --tasks kcat km --gpus 0 1 2 3 --runs_per_gpu 2
 
-
-# ── Train single target (one-off / manual) ────────────────────────────────────
-
-CUDA_VISIBLE_DEVICES=0 python emulator_bench/train_single_target_tvt.py \
-  --train_pkl /home/adhil/github/EMULaToR/data/processed/baselines/CataPro/ki/train_feats.pkl \
-  --val_pkl /home/adhil/github/EMULaToR/data/processed/baselines/CataPro/ki/val_feats.pkl \
-  --test_pkl /home/adhil/github/EMULaToR/data/processed/baselines/CataPro/ki/test_feats.pkl \
-  --out_dir /home/adhil/github/EMULaToR/data/processed/baselines/CataPro/ki/results \
-  --task_name ki
-
-
-# ── Sequential benchmark (run_split_benchmarks.py) ───────────────────────────
-# Loads default_hparams.json automatically (split_groups + train settings).
-
-CUDA_VISIBLE_DEVICES=0 python emulator_bench/run_split_benchmarks.py --value_type kcat
-CUDA_VISIBLE_DEVICES=1 python emulator_bench/run_split_benchmarks.py --value_type km
-CUDA_VISIBLE_DEVICES=2 python emulator_bench/run_split_benchmarks.py --value_type ki
-
-# With explicit seeds and custom hparams JSON:
-CUDA_VISIBLE_DEVICES=1 python emulator_bench/run_split_benchmarks.py \
-  --value_type kcat \
-  --seeds 41 42 43 44 45 \
-  --hparams_json /home/adhil/github/EMULaToR/data/processed/baselines/CataPro/kcat/optuna_studies/kcat_t04__substrate_splits_best_hparams.json \
-  --split_groups substrate_splits \
-  --overwrite
-
-CUDA_VISIBLE_DEVICES=1 python emulator_bench/run_split_benchmarks.py \
-  --value_type km \
-  --seeds 41 42 43 44 45 \
-  --hparams_json /home/adhil/github/EMULaToR/data/processed/baselines/CataPro/km/optuna_studies/km_t04__substrate_splits_best_hparams.json \
-  --split_groups substrate_splits \
-  --overwrite
-
-CUDA_VISIBLE_DEVICES=1 python emulator_bench/run_split_benchmarks.py \
-  --value_type ki \
-  --seeds 41 42 43 44 45 \
-  --hparams_json /home/adhil/github/EMULaToR/data/processed/baselines/CataPro/ki/optuna_studies/ki_t04__substrate_splits_best_hparams.json \
-  --split_groups substrate_splits \
-  --overwrite
-
-CUDA_VISIBLE_DEVICES=0 python emulator_bench/run_split_benchmarks.py \
-  --value_type kcat \
-  --seeds 41 42 43 44 45 \
-  --hparams_json /home/adhil/github/EMULaToR/data/processed/baselines/CataPro/kcat/optuna_studies/kcat_t04__substrate_splits_best_hparams.json \
-  --split_groups enzyme_sequence_splits \
-  --overwrite
-
-CUDA_VISIBLE_DEVICES=0 python emulator_bench/run_split_benchmarks.py \
-  --value_type km \
-  --seeds 41 42 43 44 45 \
-  --hparams_json /home/adhil/github/EMULaToR/data/processed/baselines/CataPro/km/optuna_studies/km_t04__substrate_splits_best_hparams.json \
-  --split_groups enzyme_sequence_splits \
-  --overwrite
-
-CUDA_VISIBLE_DEVICES=0 python emulator_bench/run_split_benchmarks.py \
-  --value_type ki \
-  --seeds 41 42 43 44 45 \
-  --hparams_json /home/adhil/github/EMULaToR/data/processed/baselines/CataPro/ki/optuna_studies/ki_t04__substrate_splits_best_hparams.json \
-  --split_groups enzyme_sequence_splits \
-  --overwrite
-
-
-# ── Parallel benchmark (launch_parallel_bench.py) ────────────────────────────
-# Phase 1 builds features sequentially; Phase 2 trains across GPUs in parallel.
-# Loads default_hparams.json automatically (split_groups + train settings).
-
-python emulator_bench/launch_parallel_bench.py \
-  --value_root ~/github/EMULaToR/data/processed/baselines/CataPro-Kcat \
-              ~/github/EMULaToR/data/processed/baselines/CataPro-Km \
-  --gpus 3 \
-  --runs_per_gpu 10 \
-  --seeds 666 777 888
-
-python emulator_bench/launch_parallel_bench.py \
-  --value_type ki \
-  --gpus 0 1 2 3 \
-  --runs_per_gpu 1
-
-# Multiple seeds, 2 concurrent runs per GPU:
-python emulator_bench/launch_parallel_bench.py \
-  --value_type kcat \
-  --gpus 0 1 2 3 \
-  --runs_per_gpu 2 \
-  --seeds 41 42 43 44 45
-
-# With custom hparams JSON:
-python emulator_bench/launch_parallel_bench.py \
-  --value_type kcat \
-  --gpus 0 1 2 3 \
-  --runs_per_gpu 2 \
-  --seeds 41 42 43 44 45 \
-  --hparams_json /home/adhil/github/EMULaToR/data/processed/baselines/CataPro/kcat/optuna_studies/kcat_t04__substrate_splits_best_hparams.json
-
-# Dry run (print planned jobs without executing):
-python emulator_bench/launch_parallel_bench.py \
-  --value_type kcat \
-  --gpus 0 1 2 3 \
-  --dry_run
+# Mean and std over seeds -> <out_root>/aggregate_catapro_results.csv
+python emulator_bench/aggregate_catapro_results.py

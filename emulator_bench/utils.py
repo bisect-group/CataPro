@@ -125,7 +125,7 @@ class RMSELoss(nn.Module):
 rmse_loss = RMSELoss()
 
 
-def run_a_training_epoch(model, data_loader, optimizer, device="cuda:0", skip_singleton_batch=False):
+def run_a_training_epoch(model, data_loader, optimizer, device="cuda:0"):
     model.train()
 
     total_loss = 0
@@ -138,7 +138,8 @@ def run_a_training_epoch(model, data_loader, optimizer, device="cuda:0", skip_si
         sbt_feats = data[:, 1024:-1]
         label = data[:, -1]
 
-        if skip_singleton_batch and len(label) == 1:
+        # BatchNorm cannot train on one row; the original Km script skips such batches.
+        if len(label) == 1:
             continue
 
         pred = model(ezy_feats, sbt_feats)

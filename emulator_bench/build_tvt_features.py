@@ -1,9 +1,13 @@
 import argparse
+import os
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
 from feature_utils import Seq_to_vec, GetMACCSKeys, get_molT5_embed
+
+DEFAULT_CACHE_DIR = str(Path(__file__).resolve().parent / ".cache_embeddings")
 
 
 def _require_columns(df, columns):
@@ -20,7 +24,7 @@ def build_features(
     smiles_col="smiles",
     prot_batch_size=8,
     mol_batch_size=16,
-    cache_dir="emulator_bench/.cache_embeddings",
+    cache_dir=DEFAULT_CACHE_DIR,
     cache_read=True,
     cache_write=True,
 ):
@@ -59,14 +63,16 @@ def build_features(
     _require_columns(df, [target_col])
     out_df["label"] = df[target_col].astype(float).values
 
-    out_df.to_pickle(output_pkl)
+    tmp_pkl = f"{output_pkl}.{os.getpid()}.tmp"
+    out_df.to_pickle(tmp_pkl)
+    os.replace(tmp_pkl, output_pkl)
     print(f"Saved features to: {output_pkl}")
     print(f"Rows: {len(out_df)} | Columns: {out_df.shape[1]}")
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Build TVT feature pickle for single-target tasks (kcat/Km/Ki).")
-    parser.add_argument("--input_csv", required=True, type=str, help="Input CSV path.")
+    parser = argparse.ArgumentParser(description="Build TVT feature pickle for single-target tasks (kcat/Km).")
+    parser.add_argument("--input_csv", required=True, type=str, help="Input parquet or CSV path.")
     parser.add_argument("--output_pkl", required=True, type=str, help="Output pickle path.")
     parser.add_argument("--sequence_col", default="sequence", type=str, help="CSV column for protein sequence.")
     parser.add_argument("--smiles_col", default="smiles", type=str, help="CSV column for substrate SMILES.")
@@ -75,7 +81,7 @@ if __name__ == "__main__":
     parser.add_argument("--mol_batch_size", default=64, type=int, help="Batch size for MolT5 embedding.")
     parser.add_argument(
         "--cache_dir",
-        default="emulator_bench/.cache_embeddings",
+        default=DEFAULT_CACHE_DIR,
         type=str,
         help="Directory for persistent embedding/fingerprint cache.",
     )

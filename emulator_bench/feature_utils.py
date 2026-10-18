@@ -7,12 +7,11 @@ import os
 from pathlib import Path
 import numpy as np
 try:
-    from src.utils.rich_progress import progress, write
+    from src.utils.rich_progress import progress
 except ModuleNotFoundError:
     import sys
-    from pathlib import Path
     sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
-    from src.utils.rich_progress import progress, write
+    from src.utils.rich_progress import progress
 from rdkit import Chem
 from rdkit.Chem import MACCSkeys
 
@@ -103,7 +102,7 @@ def Seq_to_vec(Sequence, batch_size=8, cache_dir=None, cache_read=True, cache_wr
 
         for start in progress(range(0, len(misses), batch_size), desc="ProtT5 embedding", unit="batch"):
             batch_sequences = misses[start:start + batch_size]
-            ids = tokenizer.batch_encode_plus(batch_sequences, add_special_tokens=True, padding="longest")
+            ids = tokenizer(batch_sequences, add_special_tokens=True, padding="longest")
             input_ids = torch.tensor(ids['input_ids']).to(device)
             attention_mask = torch.tensor(ids['attention_mask']).to(device)
 
