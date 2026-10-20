@@ -5,9 +5,15 @@ PY=/home/adhil/.conda/envs/mldb/bin/python
 # List the planned runs without training.
 $PY emulator_bench/run_split_benchmarks.py --task kcat --dry_run
 
+# Build only the feature cache and pickles (no training).
+CUDA_VISIBLE_DEVICES=3 $PY emulator_bench/launch_parallel_bench.py --tasks kcat --gpus 3 --seeds 666 --features_only
+
 # One task, all splits, all seeds, one GPU (sequential).
 CUDA_VISIBLE_DEVICES=0 $PY emulator_bench/run_split_benchmarks.py --task kcat
 CUDA_VISIBLE_DEVICES=0 $PY emulator_bench/run_split_benchmarks.py --task km
+
+# Cap CPU threads per run on a shared host (does not change GPU results).
+# export OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 OPENBLAS_NUM_THREADS=4
 
 # All tasks, spread over GPUs (features are built first, then runs train in parallel).
 $PY emulator_bench/launch_parallel_bench.py --tasks kcat km --gpus 0 1 2 3 --runs_per_gpu 2

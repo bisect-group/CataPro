@@ -8,7 +8,7 @@ The CataPro paper evaluates kcat and Km only.
 
 Splits (found on disk, missing folders are skipped):
 `random_splits_grouped_sequence`, `random_splits_grouped_smiles`, `uniprot_time_splits`,
-`enzyme_sequence_splits/threshold_*`, `substrate_splits/threshold_*`.
+`enzyme_sequence_splits/threshold_*`, `enzyme_structure_splits/threshold_*`, `substrate_splits/threshold_*`, `conformer_cosine_splits/threshold_*`.
 
 Seeds: 666, 777, 888.
 

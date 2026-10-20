@@ -44,6 +44,8 @@ def main():
     os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpus[0])
     for split_dir, run_root in dict.fromkeys((d, r) for _, _, d, r, _ in experiments):
         build_features(split_dir, run_root, args)
+    if args.features_only:
+        return
 
     work = queue.Queue()
     for exp in experiments:

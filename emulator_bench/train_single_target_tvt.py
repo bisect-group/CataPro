@@ -117,7 +117,7 @@ def main(args):
             th.save(model.state_dict().copy(), best_model_path)
 
         if stop:
-            epoch_bar.write("Earlystopping !")
+            print("Earlystopping !", flush=True)
             break
 
     end_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")

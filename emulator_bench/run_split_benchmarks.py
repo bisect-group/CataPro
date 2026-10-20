@@ -23,7 +23,9 @@ SPLIT_GROUPS = [
     "random_splits_grouped_smiles",
     "uniprot_time_splits",
     "enzyme_sequence_splits",
+    "enzyme_structure_splits",
     "substrate_splits",
+    "conformer_cosine_splits",
 ]
 SEEDS = [666, 777, 888]
 
@@ -40,6 +42,7 @@ def add_common_args(parser):
     parser.add_argument("--amp", action="store_true", help="Mixed precision (bf16, or fp16 on pre-Ampere GPUs). Default is fp32.")
     parser.add_argument("--overwrite", action="store_true")
     parser.add_argument("--dry_run", action="store_true")
+    parser.add_argument("--features_only", action="store_true", help="Build the feature cache and pickles, then stop before training.")
 
 
 def discover_split_jobs(task, args):

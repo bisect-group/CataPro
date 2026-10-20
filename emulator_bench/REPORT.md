@@ -31,7 +31,7 @@ All other values come from the released code. Paper and code do not disagree.
 
 For one task (kcat or km) it finds every default split folder on disk:
 `random_splits_grouped_sequence`, `random_splits_grouped_smiles`, `uniprot_time_splits`,
-`enzyme_sequence_splits/threshold_*`, `substrate_splits/threshold_*`.
+`enzyme_sequence_splits/threshold_*`, `enzyme_structure_splits/threshold_*`, `substrate_splits/threshold_*`, `conformer_cosine_splits/threshold_*`.
 It builds features (cached), trains with the original settings for seeds 666, 777, 888, and writes val and test metrics.
 Thresholds are discovered from disk. Output goes to `<EMULaToR>/outputs/baselines/CataPro` (`--out_root`). The dataset tree is read only.
 `aggregate_catapro_results.py` gives mean and std over seeds.
@@ -49,7 +49,7 @@ No original (non-emulator_bench) code was edited.
 - `no_early_stopping: true` in the default json disabled early stopping. Early stopping is now always on, as in the original.
 - Default paths pointed to `data/processed/baselines/CataPro`, which does not exist. Splits are now read from `data/processed/datasets/kinetic_dataset/<task>`.
 - Features and results were written inside the split folders (under `data`). They now go to `--out_root`.
-- Default split groups named folders that do not exist (`enzyme_structure_splits`, `conformer_cosine_splits`) and left out `uniprot_time_splits` in the runner. The list now matches the default splits.
+- Default split groups left out `uniprot_time_splits` in the runner. The list now matches the default splits.
 - Seed default was 42. It is now 666 777 888.
 - `batch_encode_plus` no longer exists in transformers 5.x (mldb has 5.19). The tokenizer is now called directly. The result is the same.
 - `time_running.dat` wrote a literal `\n`. Fixed.
@@ -96,4 +96,4 @@ Training was not run to completion. ProtT5 and MolT5 weights were downloaded to 
 ## Open issues
 
 - kcat/Km (the second CataPro model) is not evaluated.
-- Missing axes: `enzyme_structure_splits` and `conformer_cosine_splits` do not exist on disk, so P-struct and Mol-3D are not run.
+- Missing axes: none for kcat. Km split folders are found on disk only.
