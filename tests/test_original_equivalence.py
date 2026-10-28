@@ -1,7 +1,8 @@
 """Equivalence of the emulator_bench wrapper with the original CataPro code (CPU only).
 
 Run from baselines/CataPro:
-    CUDA_VISIBLE_DEVICES= python -m pytest tests/test_original_equivalence.py -v
+    CUDA_VISIBLE_DEVICES= python -m pytest tests/test_original_equivalence.py -v -m 'not real_weights'
+The real_weights tests need the cached Hugging Face ProtT5 and MolT5 and skip without them.
 """
 
 import importlib.util
@@ -186,31 +187,47 @@ def test_singleton_batch_original_handling():
         np.testing.assert_allclose(b[-1], a[-1], rtol=1e-4)  # mean loss divides by len(loader) in both
 
 
-@pytest.fixture(scope="module")
-def t5_models(monkeypatch_module):
-    """Load the cached ProtT5 and MolT5 once and share them between the original and wrapper code."""
+TINY_TOKENIZER = Path(__file__).parent / "fixtures" / "tiny_t5_tokenizer"
+
+
+@pytest.fixture(scope="module", params=["tiny", pytest.param("real", marks=pytest.mark.real_weights)])
+def t5_models(request, monkeypatch_module):
+    """Share one ProtT5 and one MolT5 between the original and wrapper code.
+
+    "tiny" uses randomly initialised T5 encoders and a committed tiny sentencepiece tokenizer, so it needs
+    no download. "real" uses the cached Hugging Face weights and skips without them.
+    """
     pytest.importorskip("transformers")
-    from transformers import T5EncoderModel, T5Tokenizer
+    from transformers import T5Config, T5EncoderModel, T5Tokenizer
 
     fu = load("wr_feature_utils", "emulator_bench/feature_utils.py")
     og = load("og_inference_utils", "inference/utils.py")
     cache = {}
+    orig_model, orig_tokenizer = T5EncoderModel.from_pretrained, T5Tokenizer.from_pretrained
 
-    def memo(cls):
-        orig = cls.from_pretrained
-
+    def memo(cls, orig):
         def get(name, *a, **kw):
             if (cls, name) not in cache:
-                try:
-                    cache[cls, name] = orig(name, *a, local_files_only=True, **kw)
-                except OSError:
-                    pytest.skip(f"{name} is not in the local Hugging Face cache")
+                if request.param == "tiny":
+                    if cls is T5Tokenizer:
+                        cache[cls, name] = orig(TINY_TOKENIZER, extra_ids=0, **kw)
+                    else:
+                        th.manual_seed(0)
+                        config = T5Config(
+                            vocab_size=64, d_model=32, d_kv=8, d_ff=64, num_layers=2, num_heads=4
+                        )
+                        cache[cls, name] = cls(config).eval()
+                else:
+                    try:
+                        cache[cls, name] = orig(name, *a, local_files_only=True, **kw)
+                    except OSError:
+                        pytest.skip(f"{name} is not in the local Hugging Face cache")
             return cache[cls, name]
 
         return get
 
-    monkeypatch_module.setattr(T5EncoderModel, "from_pretrained", memo(T5EncoderModel))
-    monkeypatch_module.setattr(T5Tokenizer, "from_pretrained", memo(T5Tokenizer))
+    monkeypatch_module.setattr(T5EncoderModel, "from_pretrained", memo(T5EncoderModel, orig_model))
+    monkeypatch_module.setattr(T5Tokenizer, "from_pretrained", memo(T5Tokenizer, orig_tokenizer))
     # The original code calls batch_encode_plus, which transformers 5 removed; __call__ is its replacement.
     monkeypatch_module.setattr(
         T5Tokenizer, "batch_encode_plus", lambda self, texts, **kw: self(texts, **kw), raising=False

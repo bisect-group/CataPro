@@ -42,6 +42,30 @@ Everything is written to `--out_root` (default `<EMULaToR>/outputs/baselines/Cat
 
 `<split_name>` is `threshold_*` or `all` for flat split groups.
 
+## Verify equivalence
+
+```bash
+emulator_bench/verify_equivalence.sh
+```
+
+Run it in the `mldb` env. It runs on CPU, needs no data or download, and fails if a test is skipped.
+Production precision is fp32: `--amp` is off by default and was slower, so it is not used. The run folders hold
+no precision record. The tests run fp32 on CPU, so the script has no gpu tests and `--gpu` only prints this.
+
+`tests/test_original_equivalence.py` compares the wrapper with the original CataPro code:
+
+- Model output, RMSE loss, gradients and batch-norm statistics for the four original model classes, in fp64,
+  with and without dropout (rtol 1e-12, gradients 1e-10).
+- Batch order of the wrapper against `DataLoader(shuffle=True)`, including the last partial batch.
+- Two training epochs (loader, loss, Adam) against the original kcat loop and the Km loop (rtol 1e-4).
+- Batched, padded ProtT5 and MolT5 features against the original per-item features (rtol 1e-4, atol 1e-5),
+  using tiny randomly initialised T5 encoders and the tokenizer in `tests/fixtures/tiny_t5_tokenizer`.
+- MACCS keys, exact.
+
+The same two feature tests also run with the real cached ProtT5 and MolT5 weights:
+`CUDA_VISIBLE_DEVICES= python -m pytest tests -m real_weights`. They skip without the Hugging Face cache and
+are not part of the script.
+
 ## Run
 
 See `commands.txt`. Run the commands from the `baselines/CataPro` folder. The ProtT5 and MolT5 weights download from Hugging Face on first use.
