@@ -1,0 +1,15 @@
+# CataPro paper commands. Run from the submodule root. emulator_bench/run.sh runs all of them.
+# Env: PY GPUS RUNS_PER_GPU SEEDS DATA_ROOT OUT_ROOT EMULATOR_ROOT. We used the conda env mldb.
+export PY=python
+
+# 1) Feature cache and pickles only (no training).
+$PY emulator_bench/launch_parallel_bench.py --tasks kcat km --seeds 666 777 888 --gpus 0 1 2 3 --runs_per_gpu 2 --features_only
+
+# 2) Train and evaluate all splits x seeds on 4 GPUs (fp32). Finished runs are skipped.
+$PY emulator_bench/launch_parallel_bench.py --tasks kcat km --seeds 666 777 888 --gpus 0 1 2 3 --runs_per_gpu 2
+
+# 3) Mean and std over seeds -> <out_root>/aggregate_catapro_results.csv
+$PY emulator_bench/aggregate_catapro_results.py
+
+# Optional: cap CPU threads per run on a shared host.
+# export OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 OPENBLAS_NUM_THREADS=4
